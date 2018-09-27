@@ -38,7 +38,7 @@ class CloudRecord(Record):
         self._mandatory_fields = ["VMUUID", "SiteName"]
             
         # This list allows us to specify the order of lines when we construct records.
-        self._msg_fields  = ["VMUUID", "SiteName", "CloudComputeService", "MachineName", 
+        self._msg_fields  = ["RecordCreateTime", "VMUUID", "SiteName", "CloudComputeService", "MachineName", 
                              "LocalUserId", "LocalGroupId", "GlobalUserName", "FQAN",
                              "Status", "StartTime", "EndTime", "SuspendDuration", 
                              "WallDuration", "CpuDuration", "CpuCount", 
@@ -47,7 +47,7 @@ class CloudRecord(Record):
                              "StorageRecordId", "ImageId", "CloudType"]
         
         # This list specifies the information that goes in the database.
-        self._db_fields = self._msg_fields[:8] + ['VO', 'VOGroup', 'VORole'] + self._msg_fields[8:]
+        self._db_fields = self._msg_fields[:9] + ['VO', 'VOGroup', 'VORole'] + self._msg_fields[9:]
         self._all_fields = self._db_fields
         
         self._ignored_fields = ["UpdateTime"]
@@ -57,7 +57,7 @@ class CloudRecord(Record):
                              "NetworkInbound", "NetworkOutbound", "PublicIPCount", "Memory", "Disk"]
         
         self._float_fields = ['Benchmark']
-        self._datetime_fields = ["StartTime", "EndTime"]
+        self._datetime_fields = ["RecordCreateTime", "StartTime", "EndTime"]
     
     def _check_fields(self):
         '''
@@ -76,11 +76,29 @@ class CloudRecord(Record):
             group = 'None'
         if vo is None:
             vo = 'None'
+
+        if self._record_content['Benchmark'] is None:
+            # If Benchmark is not present in the original record the
+            # parent Record class level type checking will set it to
+            # None. We can't pass None as a Benchmark as the field is
+            # NOT NULL in the database, so we set it to something
+            # meaningful. In this case the float 0.0.
+            self._record_content['Benchmark'] = 0.0
+            
             
         self._record_content['VORole'] = role
         self._record_content['VOGroup'] = group
         self._record_content['VO'] = vo
-        
+
+        # If the message was missing a CpuCount, assume it used
+        # zero Cpus, to prevent a NULL being written into the column
+        # in the CloudRecords tables.
+        # Doing so would be a problem despite the CloudRecords
+        # table allowing it because the CloudSummaries table
+        # doesn't allow it, creating a problem at summariser time.
+        if self._record_content['CpuCount'] is None:
+            self._record_content['CpuCount'] = 0
+
         # Check the values of StartTime and EndTime
         # self._check_start_end_times()
 

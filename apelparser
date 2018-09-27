@@ -18,7 +18,7 @@
 # - BLAH
 # - PBS
 # - SGE
-# - LSF
+# - LSF (5.x to 9.x)
 
 '''
     @author: Konrad Jopek, Will Rogers
@@ -44,7 +44,7 @@ from apel.parsers.sge import SGEParser
 from apel.parsers.pbs import PBSParser
 from apel.parsers.slurm import SlurmParser
 from apel.parsers.htcondor import HTCondorParser
-
+from apel.parsers.htcondorce import HTCondorCEParser
 
 LOGGER_ID = 'parser'
 # How many records should be put/fetched to/from database 
@@ -57,9 +57,9 @@ PARSERS = {
            'SGE': SGEParser,
            'SLURM': SlurmParser,
            'blah' : BlahParser,
-           'HTCondor': HTCondorParser,
+           'htcondorce' : HTCondorCEParser,
+           'HTCONDOR' : HTCondorParser
            }
-
 
 class ParserConfigException(Exception):
     '''
@@ -154,14 +154,20 @@ def scan_dir(parser, dirpath, reparse, expr, apel_db, processed):
     '''
     log = logging.getLogger(LOGGER_ID)
     updated = []
+
+    parserName = parser.__class__.__name__
     try:
         log.info('Scanning directory: %s', dirpath)
         
-        for item in sorted(os.listdir(dirpath)):
+        for item in os.listdir(dirpath):
             abs_file = os.path.join(dirpath, item)
             if os.path.isfile(abs_file) and expr.match(item):
                 # first, calculate the hash of the file:
-                file_hash = calculate_hash(abs_file)
+                if parserName == "HTCondorCEParser":
+                    file_hash = "htce_" + calculate_hash(abs_file)
+                else:
+                    file_hash = calculate_hash(abs_file)
+                
                 found = False
                 unparsed = False
                 # next, try to find corresponding entry
@@ -238,6 +244,8 @@ def handle_parsing(log_type, apel_db, cp):
     log.info('Setting up parser for %s files', log_type)
     if log_type == 'blah':
         section = 'blah'
+    if log_type == 'htcondorce':
+        section = 'htcondorce'    
     else:
         section = 'batch'
         
@@ -277,21 +285,13 @@ def handle_parsing(log_type, apel_db, cp):
         raise ParserConfigException(e)
     except KeyError, e:
         raise ParserConfigException("Not a valid parser type: %s" % e)
-
-    # Set parser specific options
+    
     if log_type == 'LSF':
         try:
             parser.set_scaling(cp.getboolean('batch', 'scale_host_factor'))
         except ConfigParser.NoOptionError:
-            log.warning("Option 'scale_host_factor' not found in section 'batch"
-                        "'. Will default to 'false'.")
-    elif log_type == 'SGE':
-        try:
-            parser.set_ms_timestamps(cp.getboolean('batch', 'ge_ms_timestamps'))
-        except ConfigParser.NoOptionError:
-            log.warning("Option 'ge_ms_timestamps' not found in section 'batch'"
-                        " . Will default to 'false'.")
-
+            pass
+        
     # regular expressions for blah log files and for batch log files
     try:
         prefix = cp.get(section, 'filename_prefix')
@@ -384,6 +384,17 @@ def main():
     try:
         if cp.getboolean('blah', 'enabled'):
             handle_parsing('blah', apel_db, cp)
+    except (ParserConfigException, ConfigParser.NoOptionError), e:
+        log.fatal('Parser misconfigured: %s', e)
+        log.fatal('Parser will exit.')
+        log.info(LOG_BREAK)
+        sys.exit(1)
+        
+    log.info(LOG_BREAK)
+    # htcondorce parsing 
+    try:
+        if cp.getboolean('htcondorce', 'enabled'):
+            handle_parsing('htcondorce', apel_db, cp)
     except (ParserConfigException, ConfigParser.NoOptionError), e:
         log.fatal('Parser misconfigured: %s', e)
         log.fatal('Parser will exit.')

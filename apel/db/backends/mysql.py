@@ -20,17 +20,18 @@ Created on 27 Oct 2011
 
 
 from apel.db import ApelDbException
-from apel.db.records import BlahdRecord, \
-                            CloudRecord, \
-                            CloudSummaryRecord, \
-                            EventRecord, \
-                            GroupAttributeRecord, \
-                            JobRecord, \
-                            NormalisedSummaryRecord, \
-                            ProcessedRecord, \
-                            StorageRecord, \
-                            SummaryRecord, \
-                            SyncRecord
+from apel.db.records import (BlahdRecord,
+                             HTCondorCERecord,
+                             CloudRecord,
+                             CloudSummaryRecord,
+                             EventRecord,
+                             GroupAttributeRecord,
+                             JobRecord,
+                             NormalisedSummaryRecord,
+                             ProcessedRecord,
+                             StorageRecord,
+                             SummaryRecord,
+                             SyncRecord)
 import MySQLdb.cursors
 import datetime
 import logging
@@ -48,17 +49,20 @@ class ApelMysqlDb(object):
     MYSQL_TABLES = {EventRecord : 'EventRecords',
                     JobRecord   : 'VJobRecords',
                     BlahdRecord : 'BlahdRecords',
+                    HTCondorCERecord : 'BlahdRecords',
                     SyncRecord  : 'SyncRecords',
-                    CloudRecord : 'CloudRecords',
+                    CloudRecord : 'VCloudRecords',
                     CloudSummaryRecord : 'VCloudSummaries',
                     NormalisedSummaryRecord : 'VNormalisedSummaries',
                     ProcessedRecord : 'VProcessedFiles',
-                    SummaryRecord : 'VSummaries'}
+                    SummaryRecord : 'VSummaries',
+                    StorageRecord: 'VStarRecords'}
     
     # These simply need to have the same number of arguments as the stored procedures defined in the database schemas.
     INSERT_PROCEDURES = {
               EventRecord : 'CALL InsertEventRecord(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)',
               BlahdRecord : "CALL InsertBlahdRecord(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+              HTCondorCERecord : "CALL InsertBlahdRecord(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
               }
     
     REPLACE_PROCEDURES = {
@@ -68,7 +72,7 @@ class ApelMysqlDb(object):
               NormalisedSummaryRecord: "CALL ReplaceNormalisedSummary(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
               SyncRecord  : "CALL ReplaceSyncRecord(%s, %s, %s, %s, %s, %s)",
               ProcessedRecord : "CALL ReplaceProcessedFile(%s, %s, %s, %s, %s)",
-              CloudRecord : "CALL ReplaceCloudRecord(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+              CloudRecord : "CALL ReplaceCloudRecord(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
               CloudSummaryRecord : "CALL ReplaceCloudSummaryRecord(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
               StorageRecord: "CALL ReplaceStarRecord(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
               GroupAttributeRecord: "CALL ReplaceGroupAttribute(%s, %s, %s)"
@@ -406,7 +410,7 @@ class ApelMysqlDb(object):
     def join_records(self):
         '''
         This method executes JoinJobRecords procedure in database which joins data 
-        from BlahdRecords table and EventRecords table into JobRecord.
+        from BlahdRecords (or HTCondorCERecords) table and EventRecords table into JobRecord.
         
         For exact implementantion please read the code of JoinJobRecords procedure
         from client.sql in apeldb/schema folder.

@@ -1,5 +1,24 @@
 Changelog for apel
 ==================
+ * Tue Jun 05 2018 Adrian Coveney <adrian.coveney@stfc.ac.uk> - 1.7.0-1
+ - [server] Long running VM support: Cloud VMs that run over month boundaries
+   will now have their usage in each month assigned to the correct month.
+
+ * Mon Apr 16 2018 Adrian Coveney <adrian.coveney@stfc.ac.uk> - 1.6.2-1
+ - [parsers] Added remaining job statuses for SLURM that indicate the job has
+   stopped and that resources have been used.
+ - [server] Fix CpuCount being NULL in cloud accounting records and leading to
+   warnings when summarising.
+ - [docs] Remove references to specific LSF versions as all now allowed.
+
+ * Thu Dec 14 2017 Adrian Coveney <adrian.coveney@stfc.ac.uk> - 1.6.1-1
+ - [parsers] Removed version restriction from LSF parser so that it can
+   additionally work with version 10 onwards.
+ - Added more columns to cloud summaries primary key to prevent mis-grouping.
+ - Added Python setup script to enable installation on non-RHEL-based systems.
+ - Made the updating of record timestamps in the database explicit.
+ - Added type checking to float and datetime fields in the Python code.
+
  * Fri Mar 10 2017 Adrian Coveney <adrian.coveney@stfc.ac.uk> - 1.6.0-1
  - Added support for mixed time formats used in Torque 5.1.3.
  - Changed the way core count is parsed to support Torque 5.1.0.
